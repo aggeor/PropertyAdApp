@@ -23,7 +23,12 @@ final class AdFormViewModel: ObservableObject {
         !title.isEmpty && selectedPlace != nil
     }
     
-    init() {
+    private let urlSession: URLSession
+    private let urlCache: URLCache
+    
+    init(urlSession: URLSession = .shared, urlCache: URLCache = .shared) {
+        self.urlSession = urlSession
+        self.urlCache = urlCache
         setupLocationAutocomplete()
     }
 
@@ -99,15 +104,36 @@ final class AdFormViewModel: ObservableObject {
         return "\(place.mainText), \(place.secondaryText)"
     }
 
-    private func fetchSuggestions(for query: String) {
+    func fetchSuggestions(for query: String) {
         lastLocationText = query
         guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-              let url = URL(string: "\(apiURL)?input=\(encodedQuery)") else { return }
+              let url = URL(string: "\(apiURL)?input=\(encodedQuery)") else {
+                isLoading = false
+                return
+        }
+
+        let request = URLRequest(url: url)
+        
+        // Check memory cache first
+        if let cachedResponse = urlCache.cachedResponse(for: request),
+           let places = try? JSONDecoder().decode([Place].self, from: cachedResponse.data) {
+            self.suggestions = places
+            isLoading = false // Make sure loading is false when using cache
+            print("Loaded \(places.count) places from cache")
+            return
+        }
 
         isLoading = true
 
-        URLSession.shared.dataTaskPublisher(for: url)
-            .map(\.data)
+        urlSession.dataTaskPublisher(for: url)
+            .map { [weak self] (data, response) -> (Data, URLResponse) in
+                // Save to cache
+                print("saving to cache")
+                let cachedResponse = CachedURLResponse(response: response, data: data)
+                self?.urlCache.storeCachedResponse(cachedResponse, for: URLRequest(url: url))
+                return (data, response)
+            }
+            .map(\.0)
             .decode(type: [Place].self, decoder: JSONDecoder())
             .receive(on: DispatchQueue.main)
             .sink { [weak self] completion in
@@ -121,4 +147,5 @@ final class AdFormViewModel: ObservableObject {
             }
             .store(in: &cancellables)
     }
+
 }
