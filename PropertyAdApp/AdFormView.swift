@@ -29,14 +29,21 @@ struct AdFormView: View {
         Form {
             Section("Title (required)") {
                 TextField("Add property title", text: $viewModel.title)
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
                     .focused($focus, equals: .title)
             }
 
             Section("Location (required)") {
                 VStack(alignment: .leading) {
-                    TextField("Type location...", text: $viewModel.locationText)
+                    TextField("Type location and select from the list", text: $viewModel.locationText)
+                        .autocorrectionDisabled(true)
+                        .textInputAutocapitalization(.never)
                         .focused($focus, equals: .location)
-
+                        .onChange(of: focus) { oldValue, newValue in
+                            viewModel.isLocationFocused = (newValue == .location)
+                        }
+                    
                     if viewModel.isLoading {
                         HStack {
                             ProgressView()
@@ -47,31 +54,46 @@ struct AdFormView: View {
                     }
 
                     if !viewModel.suggestions.isEmpty {
-                        List(viewModel.suggestions, id: \.placeId) { place in
-                            Button {
-                                viewModel.select(place: place)
-                            } label: {
-                                VStack(alignment: .leading) {
-                                    Text(place.mainText).bold()
-                                    Text(place.secondaryText)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                        VStack(spacing: 0) {
+                            ForEach(viewModel.suggestions) { place in
+                                Button {
+                                    viewModel.select(place: place)
+                                    focus = nil
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(place.mainText).bold()
+                                            Text(place.secondaryText)
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal)
                                 }
+                                .buttonStyle(.plain)
+                                Divider()
                             }
                         }
-                        .frame(maxHeight: 200)
-                        .listStyle(.plain)
+                        .frame(maxHeight: 300)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(8)
                     }
                 }
             }
 
             Section("Price (optional)") {
                 TextField("Add property price", text: $viewModel.price)
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
                     .focused($focus, equals: .price)
             }
 
             Section("Description (optional)") {
                 TextField("Add property description", text: $viewModel.description,  axis: .vertical)
+                    .autocorrectionDisabled(true)
+                    .textInputAutocapitalization(.never)
                     .focused($focus, equals: .description)
                     .lineLimit(5...10)
             }

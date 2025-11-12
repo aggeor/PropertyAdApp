@@ -13,23 +13,31 @@ final class AdFormViewModel: ObservableObject {
 
     @Published var showJSONSheet = false
     @Published var jsonResult = ""
+    @Published var isLocationFocused = false
 
-    var cancellables = Set<AnyCancellable>()
+    private var cancellables = Set<AnyCancellable>()
+    private let apiURL = "https://oapaiqtgkr6wfbum252tswprwa0ausnb.lambda-url.eu-central-1.on.aws"
+    private var lastLocationText: String?
 
     var canSubmit: Bool {
         !title.isEmpty && selectedPlace != nil
+    }
+    
+    init() {
+        setupLocationAutocomplete()
     }
 
     func select(place: Place) {
         selectedPlace = place
         locationText = "\(place.mainText), \(place.secondaryText)"
         suggestions = []
+        lastLocationText = locationText
     }
 
     func submit() {
         guard let place = selectedPlace else { return }
 
-        let property = [
+        let property: [String: Any] = [
             "title": title,
             "location": [
                 "placeId": place.placeId,
@@ -38,7 +46,7 @@ final class AdFormViewModel: ObservableObject {
             ],
             "price": price,
             "description": description
-        ] as [String: Any]
+        ]
 
         if let data = try? JSONSerialization.data(withJSONObject: property, options: .prettyPrinted),
            let jsonString = String(data: data, encoding: .utf8) {
@@ -55,5 +63,62 @@ final class AdFormViewModel: ObservableObject {
         description = ""
         selectedPlace = nil
         suggestions = []
+        lastLocationText = nil
+    }
+
+    private func setupLocationAutocomplete() {
+        $locationText
+            .combineLatest($isLocationFocused)
+            .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
+            .sink { [weak self] text, isFocused in
+                guard let self = self else { return }
+
+                // Reset selectedPlace if user edits text
+                if let selected = self.selectedPlace,
+                   text != "\(selected.mainText), \(selected.secondaryText)" {
+                    self.selectedPlace = nil
+                }
+
+                // Clear lastQueryText if text < 3 or unfocused
+                if text.count < 3 || !isFocused {
+                    self.suggestions = []
+                    self.lastLocationText = nil
+                    return
+                }
+
+                // Only fetch if user is focused and text changed
+                if isFocused, text != self.lastLocationText, text != self.selectedPlaceText {
+                    self.fetchSuggestions(for: text)
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    private var selectedPlaceText: String? {
+        guard let place = selectedPlace else { return nil }
+        return "\(place.mainText), \(place.secondaryText)"
+    }
+
+    private func fetchSuggestions(for query: String) {
+        lastLocationText = query
+        guard let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let url = URL(string: "\(apiURL)?input=\(encodedQuery)") else { return }
+
+        isLoading = true
+
+        URLSession.shared.dataTaskPublisher(for: url)
+            .map(\.data)
+            .decode(type: [Place].self, decoder: JSONDecoder())
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] completion in
+                self?.isLoading = false
+                if case .failure(let error) = completion {
+                    print("Error fetching suggestions: \(error)")
+                    self?.suggestions = []
+                }
+            } receiveValue: { [weak self] places in
+                self?.suggestions = places
+            }
+            .store(in: &cancellables)
     }
 }
