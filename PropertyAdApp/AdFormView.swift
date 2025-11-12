@@ -20,7 +20,7 @@ struct AdFormView: View {
             .background(.ultraThinMaterial)
             .navigationTitle("New Property")
             .sheet(isPresented: $viewModel.showJSONSheet) {
-                // JSON preview will go here
+                jsonSheetView
             }
         }
     }
@@ -118,5 +118,23 @@ struct AdFormView: View {
             .frame(maxWidth: .infinity)
         }
         .padding(16)
+    }
+    
+    var jsonSheetView: some View{
+        NavigationStack {
+            ScrollView {
+                Text("Submitted Data")
+                Text(viewModel.jsonResult)
+                    .font(.system(.body, design: .monospaced))
+                    .padding()
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Close") {
+                        viewModel.showJSONSheet = false
+                    }
+                }
+            }
+        }
     }
 }
