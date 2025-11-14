@@ -23,6 +23,10 @@ struct AdFormView: View {
                 jsonSheetView
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            focus = nil
+        }
     }
     
     var formView: some View {
