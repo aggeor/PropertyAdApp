@@ -73,6 +73,7 @@ struct AdFormView: View {
                                         }
                                         Spacer()
                                     }
+                                    .contentShape(Rectangle())
                                     .padding(.vertical, 8)
                                     .padding(.horizontal)
                                 }
