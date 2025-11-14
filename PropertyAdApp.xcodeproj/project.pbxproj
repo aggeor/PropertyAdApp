@@ -32,11 +32,6 @@
 			path = PropertyAdAppTests;
 			sourceTree = "<group>";
 		};
-		07895E302EC4A50400492153 /* PropertyAdAppUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PropertyAdAppUITests;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,7 +57,6 @@
 			children = (
 				07895E162EC4A50400492153 /* PropertyAdApp */,
 				07895E262EC4A50400492153 /* PropertyAdAppTests */,
-				07895E302EC4A50400492153 /* PropertyAdAppUITests */,
 				07895E152EC4A50400492153 /* Products */,
 			);
 			sourceTree = "<group>";
